@@ -25,6 +25,7 @@ import { displayServer } from './panels.mjs'
 import { uiServer } from './ui.mjs'
 import { chromeAvailable, chromeServer } from './chrome.mjs'
 import { visionServer } from './vision.mjs'
+import { openclawConfigured, openclawServer, PROMPT_AGENT } from './openclaw.mjs'
 import { homedir, tmpdir } from 'node:os'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
@@ -492,6 +493,7 @@ const SYSTEM_PROMPT = [
   DISABLED.has('browser') ? '' : PROMPT_BROWSER,
   DISABLED.has('camera') ? '' : PROMPT_EYES,
   PROMPT_TOOLS,
+  openclawConfigured() ? PROMPT_AGENT() : '',
   extraPrompt(),
 ].join('')
 
@@ -1339,6 +1341,8 @@ wss.on('connection', (socket) => {
           : { jarvis_chrome: chromeServer({ allowWrites: ALLOW_WRITES }) }),
         // The camera, which unlike everything else here has to ask and wait.
         ...(DISABLED.has('camera') ? {} : { jarvis_eyes: visionServer(ask) }),
+        // The user's own OpenClaw agent, when JARVIS_OPENCLAW_URL is set.
+        ...(openclawConfigured() ? { openclaw: openclawServer() } : {}),
       },
       // A plain system prompt, not the claude_code preset. The preset is
       // tuned for a coding agent — verbose, file-oriented, and a large chunk
