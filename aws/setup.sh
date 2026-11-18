@@ -34,7 +34,7 @@ sudo -u $U npm run build
 sudo -u $U npx -y playwright@latest install --with-deps chromium || npx -y playwright@latest install-deps chromium
 sudo -u $U bash -c "cat > $H/.claude.json" <<JSON
 { "mcpServers": { "playwright": { "type": "stdio", "command": "npx",
-  "args": ["-y", "@playwright/mcp@latest", "--headless", "--isolated"] } } }
+  "args": ["-y", "@playwright/mcp@0.0.86", "--headless", "--isolated", "--browser", "chromium"] } } }
 JSON
 sudo -u $U mkdir -p $H/.jarvis/workspace
 
