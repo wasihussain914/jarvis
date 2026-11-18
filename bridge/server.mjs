@@ -15,6 +15,10 @@
  *   node bridge/server.mjs
  */
 
+// Load local secrets (e.g. ELEVENLABS_API_KEY) from the gitignored .env.local.
+// Real shell env vars still win; a missing file is fine.
+try { process.loadEnvFile('.env.local') } catch {}
+
 import { WebSocketServer } from 'ws'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import { displayServer } from './panels.mjs'

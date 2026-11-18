@@ -10,6 +10,10 @@
  * browser, send things): `npm start -- --writes`.
  */
 
+// Load local secrets (e.g. ELEVENLABS_API_KEY) from the gitignored .env.local.
+// Real shell env vars still win; a missing file is fine.
+try { process.loadEnvFile('.env.local') } catch {}
+
 import { spawn } from 'node:child_process'
 import process from 'node:process'
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
