@@ -488,7 +488,24 @@ const SYSTEM_PROMPT = [
   DISABLED.has('browser') ? '' : PROMPT_BROWSER,
   DISABLED.has('camera') ? '' : PROMPT_EYES,
   PROMPT_TOOLS,
+  extraPrompt(),
 ].join('')
+
+/**
+ * Extra instructions from a file (JARVIS_EXTRA_PROMPT_FILE), appended to the
+ * persona. This is how a deployment adds a skill, like the EC2 job hunter,
+ * without editing the prompts above.
+ */
+function extraPrompt() {
+  const file = process.env.JARVIS_EXTRA_PROMPT_FILE
+  if (!file) return ''
+  try {
+    return '\n\n' + readFileSync(file, 'utf8')
+  } catch {
+    console.warn(`[jarvis] could not read JARVIS_EXTRA_PROMPT_FILE ${file}`)
+    return ''
+  }
+}
 
 /**
  * ElevenLabs credentials, borrowed from the MCP server config.

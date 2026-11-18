@@ -126,6 +126,12 @@ const VETO_EXEMPT = new Set([
   'openrouter__send-feedback',
 ])
 
+const PLAYWRIGHT_READS = new Set([
+  'browser_navigate', 'browser_navigate_back', 'browser_snapshot',
+  'browser_take_screenshot', 'browser_tabs', 'browser_wait_for',
+  'browser_console_messages', 'browser_network_requests', 'browser_close',
+])
+
 export function decideTool(name, allowWrites = false) {
   if (READ_ONLY_BUILTINS.has(name)) return true
   if (WRITE_BUILTINS.has(name)) return allowWrites
@@ -154,6 +160,9 @@ export function decideTool(name, allowWrites = false) {
     if (server === 'jarvis_eyes') return true
 
     const tool = mcpToolOf(name)
+    // Headless Playwright (the EC2 deployment's browser): looking around is a
+    // read; clicking, typing and submitting still need allowWrites.
+    if (server === 'playwright' && PLAYWRIGHT_READS.has(tool)) return true
     if (EFFECTFUL_VERB.test(tool) && !VETO_EXEMPT.has(`${server}__${tool}`)) {
       return allowWrites
     }

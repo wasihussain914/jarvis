@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  AWS 101 - Build Your Own Jarvis. Runs J.A.R.V.I.S. (voice assistant, Iron Man HUD) on one EC2
+  instance. Brain = Claude on Amazon Bedrock via an IAM instance role (no API keys).
+  Served over HTTPS (free <ip>.sslip.io cert via Caddy) behind a password.
+
+Parameters:
+  JarvisPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: Password for your Jarvis web page (username is "tony")
+  ModelId:
+    Type: String
+    Default: us.anthropic.claude-haiku-4-5-20251001-v1:0
+    AllowedValues:
+      - us.anthropic.claude-haiku-4-5-20251001-v1:0
+      - us.anthropic.claude-sonnet-4-6
+    Description: Claude model on Bedrock. Haiku is fastest for voice.
+  AllowWrites:
+    Type: String
+    Default: "0"
+    AllowedValues: ["0", "1"]
+    Description: 1 lets Jarvis click and type in its browser (needed to fill applications). 0 = look but don't touch.
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues: [t3.medium, t3.large]
+  RepoUrl:
+    Type: String
+    Default: https://github.com/wasihussain914/jarvis
+  LatestUbuntuAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+
+Resources:
+  JarvisRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: bedrock-invoke
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                  - bedrock:ListInferenceProfiles
+                  - bedrock:GetInferenceProfile
+                Resource: "*"
+              - Effect: Allow
+                Action: [aws-marketplace:ViewSubscriptions, aws-marketplace:Subscribe]
+                Resource: "*"
+
+  JarvisProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref JarvisRole]
+
+  JarvisSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Jarvis - HTTPS only (80 is for the certificate challenge + redirect)
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
+
+  JarvisIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  JarvisInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestUbuntuAmi
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref JarvisProfile
+      SecurityGroupIds: [!GetAtt JarvisSG.GroupId]
+      MetadataOptions: { HttpTokens: required }
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs: { VolumeSize: 30, VolumeType: gp3, Encrypted: true }
+      Tags:
+        - { Key: Name, Value: jarvis }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          exec > >(tee /var/log/jarvis-setup.log) 2>&1
+          export JARVIS_PASSWORD='${JarvisPassword}' JARVIS_MODEL='${ModelId}' JARVIS_ALLOW_WRITES='${AllowWrites}'
+          export AWS_REGION='${AWS::Region}' REPO_URL='${RepoUrl}'
+          until curl -fsSL "${RepoUrl}/raw/main/aws/setup.sh" -o /tmp/setup.sh; do sleep 5; done
+          bash /tmp/setup.sh
+
+  JarvisIPAssoc:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt JarvisIP.AllocationId
+      InstanceId: !Ref JarvisInstance
+
+Outputs:
+  JarvisUrl:
+    Description: Open in Chrome (user "tony" + your password). Ready ~6 min after CREATE_COMPLETE.
+    Value: !Join ["", ["https://", !Join ["-", !Split [".", !Ref JarvisIP]], ".sslip.io"]]
+  ConnectShell:
+    Description: Browser terminal on the instance
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/${JarvisInstance}?region=${AWS::Region}
