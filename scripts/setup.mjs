@@ -6,6 +6,9 @@
 // JARVIS. Every check degrades to a single friendly line if something is not
 // there, and the script always exits 0 — it is advice, not a gate.
 
+// Pick up ELEVENLABS_API_KEY from the gitignored .env.local, like the bridge does.
+try { process.loadEnvFile('.env.local') } catch {}
+
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
