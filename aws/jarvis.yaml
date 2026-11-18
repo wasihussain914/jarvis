@@ -98,7 +98,7 @@ Resources:
           exec > >(tee /var/log/jarvis-setup.log) 2>&1
           export JARVIS_PASSWORD='${JarvisPassword}' JARVIS_MODEL='${ModelId}' JARVIS_ALLOW_WRITES='${AllowWrites}'
           export AWS_REGION='${AWS::Region}' REPO_URL='${RepoUrl}'
-          until curl -fsSL "${RepoUrl}/raw/main/aws/setup.sh" -o /tmp/setup.sh; do sleep 5; done
+          until curl -fsSL "${RepoUrl}/raw/main/aws/setup.sh?nocache=$(date +%s)" -o /tmp/setup.sh; do sleep 5; done
           bash /tmp/setup.sh
 
   JarvisIPAssoc:
