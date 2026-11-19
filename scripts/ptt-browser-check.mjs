@@ -1,3 +1,6 @@
+// Manual check, not part of `npm test` (needs playwright + a running JARVIS):
+//   npm i playwright && node scripts/ptt-browser-check.mjs <url> <user> <pass> <speech.wav>
+// The wav is played on loop as a fake microphone.
 // Real-browser push-to-talk test: fake mic loops a spoken question; checks
 // nothing is sent while Space is up, and exactly one turn is sent per hold.
 import { chromium } from 'playwright'
