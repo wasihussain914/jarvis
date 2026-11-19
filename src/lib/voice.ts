@@ -428,6 +428,8 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
    */
   const pendingAudio: Blob[] = []
   let draining = false
+  // Whether the VAD segment in progress began with the mic live.
+  let segmentOk = false
   // Set when push-to-talk is released; cleared once the turn has been sent.
   let releasing = false
   const settle = () => {
@@ -537,7 +539,11 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       const mode = h.mode()
       diag.mode = mode
       diag.sessions++
-      if (mode === 'deaf' || h.muted?.()) return
+      // Decided at the start of the segment: the VAD records it either way,
+      // so a segment that began with the mic muted must be thrown away at the
+      // end too, not just ignored here.
+      segmentOk = !h.muted?.()
+      if (mode === 'deaf' || !segmentOk) return
       // Standing down mid-thought throws the thought away with it. Otherwise
       // held text would surface as the opening of the *next* conversation.
       if (mode === 'wake') assemble.cancel()
@@ -554,6 +560,11 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       }
     },
     onEnd: (blob) => {
+      if (!segmentOk) {
+        drop('mic muted')
+        settle()
+        return
+      }
       pendingAudio.push(blob)
       void drain()
     },
@@ -599,7 +610,12 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
     live: () => vad?.live() ?? false,
     release: () => {
       releasing = true
-      settle()
+      // A beat for the last syllable, then close the segment ourselves: in a
+      // noisy room the VAD would otherwise keep recording until it goes quiet.
+      setTimeout(() => {
+        vad?.cut()
+        settle()
+      }, 300)
       // Belt and braces: never leave a released turn waiting on a segment
       // that somehow never closes.
       setTimeout(() => {
