@@ -207,7 +207,7 @@ export function Hud() {
           </span>
           {phase !== 'offline' && phase !== 'boot' && (
             <span className="status-text" style={{ marginLeft: 12, opacity: micMuted ? 0.55 : 1 }}>
-              {micMuted ? 'MIC OFF · SPACE TO TALK' : 'MIC ON · SPACE TO MUTE'}
+              {micMuted ? 'HOLD SPACE TO TALK' : '● MIC LIVE'}
             </span>
           )}
         </div>

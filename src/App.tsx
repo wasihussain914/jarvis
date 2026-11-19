@@ -674,11 +674,10 @@ export default function App() {
       }
       if (phase === 'boot') return
 
-      // Space is a mic toggle, so background noise can't wake him or cut in.
-      // Unmuting also opens a turn, so you can just press Space and talk.
-      const muted = !store.getState().micMuted
-      store.getState().setMicMuted(muted)
-      if (muted) return
+      // Push-to-talk: the mic is live only while Space is held, so background
+      // noise can neither wake him nor cut in. Holding it over an answer
+      // interrupts him, the way talking over him would.
+      store.getState().setMicMuted(false)
 
       if (
         phase === 'thinking' ||
@@ -693,9 +692,20 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
 
+    // Letting go of Space closes the mic and sends whatever was said.
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return
+      e.preventDefault()
+      if (store.getState().micMuted) return
+      store.getState().setMicMuted(true)
+      voice.current?.release?.()
+    }
+    window.addEventListener('keyup', onKeyUp)
+
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', onKeyUp)
       clearIdle()
       if (voicePoll.current) clearInterval(voicePoll.current)
       voice.current?.stop()

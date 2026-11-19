@@ -58,6 +58,9 @@ export type Voice = {
   stop: () => void
   /** True while a recogniser is actually running. */
   live: () => boolean
+  /** Push-to-talk released: send what was said as soon as it is transcribed,
+   *  instead of waiting to see if the sentence continues. */
+  release?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -425,6 +428,14 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
    */
   const pendingAudio: Blob[] = []
   let draining = false
+  // Set when push-to-talk is released; cleared once the turn has been sent.
+  let releasing = false
+  const settle = () => {
+    if (!releasing || draining || pendingAudio.length) return
+    if (vad?.meter().speaking) return // its segment will end and land here again
+    releasing = false
+    assemble.flush()
+  }
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -517,6 +528,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       }
     } finally {
       draining = false
+      settle()
     }
   }
 
@@ -585,6 +597,17 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       diag.running = false
     },
     live: () => vad?.live() ?? false,
+    release: () => {
+      releasing = true
+      settle()
+      // Belt and braces: never leave a released turn waiting on a segment
+      // that somehow never closes.
+      setTimeout(() => {
+        if (!releasing) return
+        releasing = false
+        assemble.flush()
+      }, 4000)
+    },
   }
 }
 
