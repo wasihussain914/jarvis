@@ -40,6 +40,11 @@ export type VoiceHandlers = {
   /** Push-to-talk mute. While true no new speech is picked up, but whatever
    *  was already said when the mic went off is still transcribed and sent. */
   muted?: () => boolean
+  /** Push-to-talk key is down: keep assembling, send on release, not before. */
+  holding?: () => boolean
+  /** Whether talking now may cut him off. Push-to-talk allows it only for a
+   *  press that began while he was answering, not for noise later in a hold. */
+  mayInterrupt?: () => boolean
   /** Fired on his name, from a partial — waiting for endpointing feels slow.
    *  `trailing` is whatever followed it, so "Jarvis, what's the weather" is
    *  one breath rather than two turns. */
@@ -512,7 +517,9 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
 
       // Not a turn yet — a piece of one. The assembler decides when the thought
       // is finished, reading the words and whether the room is still noisy.
-      assemble.feed(said, vad?.meter().speaking ?? false)
+      // While the push-to-talk key is held, the thought is not finished yet:
+      // treat it as still talking so only the release sends it.
+      assemble.feed(said, (vad?.meter().speaking ?? false) || (h.holding?.() ?? false))
     } catch (err) {
       diag.restarts++
       diag.lastError = String(err)
@@ -551,6 +558,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       // because the guard threshold is high this is a real interruption rather
       // than leaked playback — so cut him off now, do not wait for the words.
       if (mode === 'guard') {
+        if (h.mayInterrupt && !h.mayInterrupt()) return
         const since = speakingSince()
         if (since && Date.now() - since < SELF_GUARD_MS) {
           diag.selfGuarded++

@@ -75,6 +75,8 @@ export default function App() {
   const history = useRef<Msg[]>([])
   const speaker = useRef<ReturnType<typeof createSpeaker> | null>(null)
   const voice = useRef<Voice | null>(null)
+  // Push-to-talk: whether the current Space press may interrupt an answer.
+  const pttInterrupt = useRef(false)
 
   /**
    * Monotonic turn counter. Every await in a turn checks it on the way out:
@@ -520,6 +522,8 @@ export default function App() {
     voice.current = await startVoice({
       mode,
       muted: () => store.getState().micMuted,
+      holding: () => PUSH_TO_TALK && !store.getState().micMuted,
+      mayInterrupt: () => !PUSH_TO_TALK || pttInterrupt.current,
       onWake,
       onSpeechStart,
       onPartial,
@@ -677,7 +681,11 @@ export default function App() {
       // Push-to-talk (VITE_PUSH_TO_TALK): the mic is live only while Space is
       // held, so background noise can neither wake him nor cut in. Holding it
       // over an answer interrupts him, the way talking over him would.
-      if (PUSH_TO_TALK) store.getState().setMicMuted(false)
+      if (PUSH_TO_TALK) {
+        store.getState().setMicMuted(false)
+        // Only a press that starts while he is answering is a barge-in.
+        pttInterrupt.current = phase === 'thinking' || phase === 'tooling' || phase === 'speaking'
+      }
 
       if (
         phase === 'thinking' ||
@@ -698,6 +706,7 @@ export default function App() {
       e.preventDefault()
       if (store.getState().micMuted) return
       store.getState().setMicMuted(true)
+      pttInterrupt.current = false
       voice.current?.release?.()
     }
     window.addEventListener('keyup', onKeyUp)
