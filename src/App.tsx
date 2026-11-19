@@ -222,8 +222,6 @@ export default function App() {
 
   /** What the voice loop should do with what it hears, derived from phase. */
   const mode = (): VoiceMode => {
-    // Muted means muted: no wake word, no barge-in, nothing transcribed.
-    if (store.getState().micMuted) return 'deaf'
     switch (store.getState().phase) {
       case 'offline':
       case 'boot':
@@ -521,6 +519,7 @@ export default function App() {
     // One voice loop, started once, running until the page closes.
     voice.current = await startVoice({
       mode,
+      muted: () => store.getState().micMuted,
       onWake,
       onSpeechStart,
       onPartial,

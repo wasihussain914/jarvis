@@ -37,6 +37,9 @@ export type VoiceMode =
 export type VoiceHandlers = {
   /** Read fresh on every result, so the app never has to re-subscribe. */
   mode: () => VoiceMode
+  /** Push-to-talk mute. While true no new speech is picked up, but whatever
+   *  was already said when the mic went off is still transcribed and sent. */
+  muted?: () => boolean
   /** Fired on his name, from a partial — waiting for endpointing feels slow.
    *  `trailing` is whatever followed it, so "Jarvis, what's the weather" is
    *  one breath rather than two turns. */
@@ -522,7 +525,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       const mode = h.mode()
       diag.mode = mode
       diag.sessions++
-      if (mode === 'deaf') return
+      if (mode === 'deaf' || h.muted?.()) return
       // Standing down mid-thought throws the thought away with it. Otherwise
       // held text would surface as the opening of the *next* conversation.
       if (mode === 'wake') assemble.cancel()
@@ -600,6 +603,10 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
  * assistant that keeps listening.
  */
 function startBrowserVoice(h: VoiceHandlers): Voice {
+  // The browser recogniser has no segment boundary to finish on, so muted
+  // simply means deaf here.
+  const baseMode = h.mode
+  h = { ...h, mode: () => (h.muted?.() ? 'deaf' : baseMode()) }
   const Ctor =
     (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
   if (!Ctor) {
