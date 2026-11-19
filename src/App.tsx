@@ -222,6 +222,8 @@ export default function App() {
 
   /** What the voice loop should do with what it hears, derived from phase. */
   const mode = (): VoiceMode => {
+    // Muted means muted: no wake word, no barge-in, nothing transcribed.
+    if (store.getState().micMuted) return 'deaf'
     switch (store.getState().phase) {
       case 'offline':
       case 'boot':
@@ -669,9 +671,17 @@ export default function App() {
       const phase = store.getState().phase
       if (phase === 'offline') {
         void powerOn()
-      } else if (phase === 'boot') {
-        /* ignore — the boot sequence owns the phase until it finishes */
-      } else if (
+        return
+      }
+      if (phase === 'boot') return
+
+      // Space is a mic toggle, so background noise can't wake him or cut in.
+      // Unmuting also opens a turn, so you can just press Space and talk.
+      const muted = !store.getState().micMuted
+      store.getState().setMicMuted(muted)
+      if (muted) return
+
+      if (
         phase === 'thinking' ||
         phase === 'tooling' ||
         phase === 'speaking'

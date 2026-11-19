@@ -153,6 +153,7 @@ export function Hud() {
   const activeTool = useStore((s) => s.activeTool)
   const connected = useStore((s) => s.connected)
   const error = useStore((s) => s.error)
+  const micMuted = useStore((s) => s.micMuted)
   const level = useStore((s) => s.level)
   const voice = useStore((s) => s.voice)
   const bootNote = useStore((s) => s.bootNote)
@@ -204,6 +205,11 @@ export function Hud() {
                 LISTENING and PROCESSING for the rest of the session. */}
             {phase === 'boot' && bootNote ? bootNote : statusText[phase]}
           </span>
+          {phase !== 'offline' && phase !== 'boot' && (
+            <span className="status-text" style={{ marginLeft: 12, opacity: micMuted ? 0.55 : 1 }}>
+              {micMuted ? 'MIC OFF · SPACE TO TALK' : 'MIC ON · SPACE TO MUTE'}
+            </span>
+          )}
         </div>
       </header>
 

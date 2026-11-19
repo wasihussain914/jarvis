@@ -219,6 +219,8 @@ type State = {
   turns: Turn[]
   activeTool: string | null
   error: string | null
+  /** Push-to-talk: while true the mic is ignored entirely. Space toggles it. */
+  micMuted: boolean
   connected: string[]
   /** Name of the speech-synthesis voice in use, shown in the HUD. */
   voice: string
@@ -257,6 +259,7 @@ type State = {
   setCaption: (c: string) => void
   setActiveTool: (t: string | null) => void
   setError: (e: string | null) => void
+  setMicMuted: (m: boolean) => void
   setConnected: (c: string[]) => void
   pushTurn: (t: Turn) => void
   appendToLastTurn: (text: string) => void
@@ -277,6 +280,7 @@ export const useStore = create<State>((set) => ({
   turns: [],
   activeTool: null,
   error: null,
+  micMuted: true,
   connected: [],
   voice: '',
   gestures: false,
@@ -351,6 +355,7 @@ export const useStore = create<State>((set) => ({
   setCaption: (caption) => set({ caption }),
   setActiveTool: (activeTool) => set({ activeTool }),
   setError: (error) => set({ error }),
+  setMicMuted: (micMuted) => set({ micMuted }),
   setConnected: (connected) => set({ connected }),
   pushTurn: (turn) => set((s) => ({ turns: [...s.turns.slice(-40), turn] })),
   appendToLastTurn: (text) =>
