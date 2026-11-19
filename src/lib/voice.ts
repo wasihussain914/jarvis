@@ -700,9 +700,12 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     barged = false
   }
 
+  // Push-to-talk released: what was said up to the release still counts,
+  // even though the mic now reads as deaf.
+  let releasing = false
   const emit = () => {
     const text = `${settled} ${interim}`.replace(/\s+/g, ' ').trim()
-    const mode = h.mode()
+    const mode = releasing ? baseMode() : h.mode()
     reset()
     if (!text || mode === 'deaf') return
     if (isEcho(text, speakingNow())) {
@@ -727,7 +730,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     // The recogniser has already endpointed on its own 900ms gap; the assembler
     // decides whether that gap actually ended the thought. `false` because a
     // result only reaches here once the recogniser has gone quiet.
-    assemble.feed(text, false)
+    assemble.feed(text, h.holding?.() ?? false)
   }
 
   const bumpSilence = () => {
@@ -777,6 +780,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     const full = `${settled} ${interim}`.replace(/\s+/g, ' ').trim()
     if (!started || (mode === 'guard' && !barged)) {
       const words = full.split(/\s+/).filter(Boolean).length
+      if (mode === 'guard' && h.mayInterrupt && !h.mayInterrupt()) return
       if (mode === 'guard') {
         // An override word cuts through everything below it — "stop" has to
         // work on the first syllable or it is not a stop button.
@@ -881,5 +885,17 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
       }
     },
     live: () => running,
+    release: () => {
+      // Send what was heard up to now, the way the recogniser's own pause
+      // would have, then finish the thought instead of waiting for more.
+      clearSilence()
+      releasing = true
+      try {
+        emit()
+      } finally {
+        releasing = false
+      }
+      assemble.flush()
+    },
   }
 }
