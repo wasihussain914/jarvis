@@ -1152,6 +1152,13 @@ const RESULT_FAILURES = {
 wss.on('connection', (socket) => {
   console.log('[jarvis] client connected')
 
+  // Proxies (Cloudflare, load balancers) drop a WebSocket that has been quiet
+  // for ~100s, which loses whatever was said next. A ping every 30s keeps it up.
+  const keepalive = setInterval(() => {
+    if (socket.readyState === socket.OPEN) socket.ping()
+  }, 30_000)
+  socket.on('close', () => clearInterval(keepalive))
+
   // Answer the HUD straight away rather than making it wait for the agent's
   // first turn. Refined later by the real init message.
   socket.send(
