@@ -19,6 +19,9 @@ const URL_ = process.env.JARVIS_OPENCLAW_URL?.trim().replace(/\/+$/, '')
 const TOKEN = process.env.JARVIS_OPENCLAW_TOKEN?.trim()
 const SESSION = process.env.JARVIS_OPENCLAW_SESSION?.trim() || 'jarvis-voice'
 const NAME = process.env.JARVIS_OPENCLAW_NAME?.trim() || 'your agent'
+// Optional model override for the agent's voice turns (e.g. anthropic/claude-haiku-4-5
+// for speed). Must be in the agent's allowed models. Unset = the agent's own model.
+const MODEL = process.env.JARVIS_OPENCLAW_MODEL?.trim()
 
 export const openclawConfigured = () => Boolean(URL_ && TOKEN)
 
@@ -41,7 +44,11 @@ export function openclawServer() {
           try {
             const res = await fetch(`${URL_}/v1/chat/completions`, {
               method: 'POST',
-              headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+              headers: {
+                Authorization: `Bearer ${TOKEN}`,
+                'Content-Type': 'application/json',
+                ...(MODEL ? { 'x-openclaw-model': MODEL } : {}),
+              },
               body: JSON.stringify({
                 model: 'openclaw/default',
                 user: SESSION,
