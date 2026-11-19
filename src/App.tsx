@@ -13,7 +13,7 @@ import * as hands from './lib/hands'
 import { listenForClap } from './lib/clap'
 import * as camera from './lib/camera'
 import * as kokoro from './lib/kokoro'
-import { TTS_ENGINE } from './config'
+import { PUSH_TO_TALK, TTS_ENGINE } from './config'
 import { forTool, attention } from './lib/fillers'
 import {
   ask,
@@ -674,10 +674,10 @@ export default function App() {
       }
       if (phase === 'boot') return
 
-      // Push-to-talk: the mic is live only while Space is held, so background
-      // noise can neither wake him nor cut in. Holding it over an answer
-      // interrupts him, the way talking over him would.
-      store.getState().setMicMuted(false)
+      // Push-to-talk (VITE_PUSH_TO_TALK): the mic is live only while Space is
+      // held, so background noise can neither wake him nor cut in. Holding it
+      // over an answer interrupts him, the way talking over him would.
+      if (PUSH_TO_TALK) store.getState().setMicMuted(false)
 
       if (
         phase === 'thinking' ||
@@ -694,7 +694,7 @@ export default function App() {
 
     // Letting go of Space closes the mic and sends whatever was said.
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code !== 'Space') return
+      if (!PUSH_TO_TALK || e.code !== 'Space') return
       e.preventDefault()
       if (store.getState().micMuted) return
       store.getState().setMicMuted(true)

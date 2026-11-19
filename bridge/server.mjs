@@ -25,7 +25,7 @@ import { displayServer } from './panels.mjs'
 import { uiServer } from './ui.mjs'
 import { chromeAvailable, chromeServer } from './chrome.mjs'
 import { visionServer } from './vision.mjs'
-import { openclawConfigured, openclawServer, PROMPT_AGENT } from './openclaw.mjs'
+import { agentConfig, agentConfigured, agentPrompt, agentServer } from './agent.mjs'
 import { homedir, tmpdir } from 'node:os'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
@@ -493,7 +493,7 @@ const SYSTEM_PROMPT = [
   DISABLED.has('browser') ? '' : PROMPT_BROWSER,
   DISABLED.has('camera') ? '' : PROMPT_EYES,
   PROMPT_TOOLS,
-  openclawConfigured() ? PROMPT_AGENT() : '',
+  agentConfigured() ? agentPrompt() : '',
   extraPrompt(),
 ].join('')
 
@@ -1035,7 +1035,9 @@ const handleRequest = async (req, res) => {
       }
       const data = await upstream.json()
       res.writeHead(200, { ...cors, 'content-type': 'application/json' })
-      return res.end(JSON.stringify({ text: (data.text ?? '').trim() }))
+      const heard = (data.text ?? '').trim()
+      if (process.env.JARVIS_DEBUG === '1') console.log(`[jarvis] stt ${size}B -> "${heard.slice(0, 120)}"`)
+      return res.end(JSON.stringify({ text: heard }))
     } catch (err) {
       res.writeHead(502, cors)
       return res.end(String(err?.message ?? err))
@@ -1110,6 +1112,10 @@ console.log(
   `[jarvis] speech ${elevenKey() ? 'via ElevenLabs (key from MCP config)' : 'using browser fallback voice'}`,
 )
 console.log(`[jarvis] model ${MODEL} · effort ${EFFORT}`)
+if (agentConfigured()) {
+  const a = agentConfig()
+  console.log(`[jarvis] agent ${a.name} at ${a.url}${a.fastModel ? ` · quick look-ups on ${a.fastModel}` : ''}`)
+}
 console.log(
   `[jarvis] MCP servers from config: ${Object.keys(MCP_SERVERS).join(', ') || 'none'}` +
     (ACCOUNT_CONNECTORS ? ' · account connectors ON' : ' · account connectors off'),
@@ -1348,8 +1354,9 @@ wss.on('connection', (socket) => {
           : { jarvis_chrome: chromeServer({ allowWrites: ALLOW_WRITES }) }),
         // The camera, which unlike everything else here has to ask and wait.
         ...(DISABLED.has('camera') ? {} : { jarvis_eyes: visionServer(ask) }),
-        // The user's own OpenClaw agent, when JARVIS_OPENCLAW_URL is set.
-        ...(openclawConfigured() ? { openclaw: openclawServer() } : {}),
+        // The user's own agent (OpenClaw or any OpenAI-compatible one), when
+        // JARVIS_AGENT_URL and JARVIS_AGENT_TOKEN are set. See bridge/agent.mjs.
+        ...(agentConfigured() ? { agent: agentServer() } : {}),
       },
       // A plain system prompt, not the claude_code preset. The preset is
       // tuned for a coding agent — verbose, file-oriented, and a large chunk

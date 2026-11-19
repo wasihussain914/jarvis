@@ -6,6 +6,7 @@ import { BladeSweep, Blades } from './Blades'
 import { Effects } from './Effects'
 import { Pointer } from './Pointer'
 import { GestureGuide } from './GestureGuide'
+import { PUSH_TO_TALK } from '../config'
 
 const statusText: Record<Phase, string> = {
   offline: 'OFFLINE',
@@ -205,7 +206,7 @@ export function Hud() {
                 LISTENING and PROCESSING for the rest of the session. */}
             {phase === 'boot' && bootNote ? bootNote : statusText[phase]}
           </span>
-          {phase !== 'offline' && phase !== 'boot' && (
+          {PUSH_TO_TALK && phase !== 'offline' && phase !== 'boot' && (
             <span className="status-text" style={{ marginLeft: 12, opacity: micMuted ? 0.55 : 1 }}>
               {micMuted ? 'HOLD SPACE TO TALK' : '● MIC LIVE'}
             </span>

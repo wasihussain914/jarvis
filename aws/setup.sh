@@ -27,7 +27,7 @@ apt-get update -y && apt-get install -y caddy
 sudo -u $U git clone --depth 1 "$REPO_URL" $APP || sudo -u $U git -C $APP pull
 cd $APP
 sudo -u $U env npm_config_onnxruntime_node_install_cuda=skip npm ci
-printf 'VITE_BACKEND=bridge\nVITE_BRIDGE_URL=wss://%s/bridge\n' "$HOST" | sudo -u $U tee .env.local
+printf 'VITE_BACKEND=bridge\nVITE_BRIDGE_URL=wss://%s/bridge\nVITE_PUSH_TO_TALK=true\n' "$HOST" | sudo -u $U tee .env.local
 sudo -u $U npm run build
 
 # Hands: headless Chromium via the Playwright MCP server, registered the way Claude Code reads it

@@ -13,6 +13,14 @@ laptop only has to draw the interface. **ElevenLabs is an optional add-on** that
 gives JARVIS a much better voice and sharper hearing; without it he speaks and
 listens through the browser's own speech, and everything still works.
 
+**Bring your own agent.** Already have a personal agent ([OpenClaw](https://github.com/openclaw/openclaw) or
+anything OpenAI-compatible) with your memory, calendar and mail? Point JARVIS at it and he becomes its
+voice: small talk stays fast, and anything personal is handed to your agent. Four steps in
+[docs/connect-your-agent.md](docs/connect-your-agent.md).
+
+**Run it on AWS.** `aws/jarvis.yaml` deploys JARVIS to one EC2 instance, with Claude on Amazon Bedrock as the brain
+(no API keys), HTTPS and a password. See [aws/README.md](aws/README.md).
+
 ---
 
 ## Requirements
@@ -200,7 +208,7 @@ chose.
 | Key / phrase | Does |
 |---|---|
 | **"Hey Jarvis"** | Wake him |
-| **Space** | Talk without the wake word |
+| **Space** | Talk without the wake word. With `VITE_PUSH_TO_TALK=true`: hold to talk, release to send (the mic is off otherwise) |
 | Just speak | Interrupt him mid-sentence (barge-in) |
 | **V** | Cycle the browser voice |
 | **Escape** | Stand down |
@@ -247,6 +255,8 @@ Everything is optional in bridge mode. Frontend settings live in `.env.local`
 | `JARVIS_DEBUG` | off | `1` logs every agent message to the bridge terminal, answer text and tool calls included |
 | `JARVIS_VOICE_ID` | none | ElevenLabs voice id |
 | `ELEVENLABS_API_KEY` | none | Optional; enables the ElevenLabs voice + Scribe |
+| `JARVIS_AGENT_URL` / `JARVIS_AGENT_TOKEN` | none | Connect your own agent; see [docs/connect-your-agent.md](docs/connect-your-agent.md) for these and the other `JARVIS_AGENT_*` settings |
+| `JARVIS_EXTRA_PROMPT_FILE` | none | A file of extra instructions appended to the persona, e.g. a skill like `aws/job-hunter.md` |
 
 ### Frontend (`.env.local`)
 
@@ -257,6 +267,7 @@ Everything is optional in bridge mode. Frontend settings live in `.env.local`
 | `VITE_TTS_ENGINE` | `system` or `kokoro` |
 | `VITE_KOKORO_VOICE` | Voice for the Kokoro engine |
 | `VITE_USE_ELEVENLABS` | Force the ElevenLabs voice on |
+| `VITE_PUSH_TO_TALK` | `true`: hold Space to talk, mic off otherwise (no wake word). Good for noisy rooms |
 | `VITE_ANTHROPIC_API_KEY` | Direct mode only |
 
 ### Adding an ElevenLabs key

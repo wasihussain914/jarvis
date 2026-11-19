@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { PUSH_TO_TALK } from './config'
 
 export type Phase =
   | 'offline'   // waiting for the click that unlocks audio
@@ -280,7 +281,7 @@ export const useStore = create<State>((set) => ({
   turns: [],
   activeTool: null,
   error: null,
-  micMuted: true,
+  micMuted: PUSH_TO_TALK,
   connected: [],
   voice: '',
   gestures: false,

@@ -159,9 +159,9 @@ export function decideTool(name, allowWrites = false) {
     // indicator the user can see for as long as it is live.
     if (server === 'jarvis_eyes') return true
 
-    // The user's own agent. It runs its own permission checks; asking it is
-    // a conversation, not an action this bridge can vet by name.
-    if (server === 'openclaw') return true
+    // The user's own agent (bridge/agent.mjs). It runs its own permission
+    // checks; asking it is a conversation, not an action to vet by name.
+    if (server === 'agent') return true
 
     const tool = mcpToolOf(name)
     // Headless Playwright (the EC2 deployment's browser): looking around is a

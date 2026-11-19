@@ -75,6 +75,13 @@ export const BRIDGE_WS_URL = str(import.meta.env.VITE_BRIDGE_URL) ?? 'ws://local
 export const BRIDGE_HTTP_URL = BRIDGE_WS_URL.replace(/^ws/, 'http')
 
 /**
+ * Push-to-talk. Off (default): the mic is always open, "Hey Jarvis" wakes him
+ * and Space starts a turn. On: the mic is live only while Space is held, so a
+ * noisy room can neither wake him nor cut in — at the cost of the wake word.
+ */
+export const PUSH_TO_TALK = str(import.meta.env.VITE_PUSH_TO_TALK) === 'true'
+
+/**
  * Speech output engine.
  *
  * false (default) — the browser's own speechSynthesis. Runs on-device, so
