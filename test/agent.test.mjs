@@ -116,3 +116,44 @@ test('policy: ask_agent is allowed without --writes; headless Playwright reads t
   assert.equal(decideTool('mcp__playwright__browser_type'), false)
   assert.equal(decideTool('mcp__playwright__browser_click', true), true)
 })
+
+// ---- job search (bridge/jobs.mjs) ----
+import { searchJobs, jobsEnabled } from '../bridge/jobs.mjs'
+
+const NOW = 1_800_000_000_000
+const day = 86400
+const rows = [
+  { company_name: 'Acme', title: 'SWE Intern', category: 'Software', locations: ['New York, NY'], url: 'u1', active: true, is_visible: true, date_posted: NOW / 1000 - 1 * day },
+  { company_name: 'Beta', title: 'Data Science Intern', category: 'AI/ML/Data', locations: ['New York, NY'], url: 'u2', active: true, is_visible: true, date_posted: NOW / 1000 - 2 * day },
+  { company_name: 'Gamma', title: 'ML Intern', category: 'Data Science, AI & Machine Learning', locations: ['Remote in USA'], url: 'u3', active: true, is_visible: true, date_posted: NOW / 1000 },
+  { company_name: 'Closed', title: 'SWE Intern', category: 'Software', locations: ['New York, NY'], url: 'u4', active: false, is_visible: true, date_posted: NOW / 1000 },
+  { company_name: 'Hidden', title: 'SWE Intern', category: 'Software Engineering', locations: ['Austin, TX'], url: 'u5', active: true, is_visible: false, date_posted: NOW / 1000 },
+  { company_name: 'Delta', title: 'Frontend Intern', category: 'Software Engineering', locations: ['Austin, TX'], url: 'u6', active: true, is_visible: true, date_posted: NOW / 1000 - 5 * day },
+]
+
+test('jobs: off unless JARVIS_JOBS=1', () => {
+  assert.equal(jobsEnabled({}), false)
+  assert.equal(jobsEnabled({ JARVIS_JOBS: '1' }), true)
+})
+
+test('jobs: software covers both category spellings, skips closed and hidden, newest first', () => {
+  const r = searchJobs(rows, { role: 'software', now: NOW })
+  assert.deepEqual(r.map((x) => x.company), ['Acme', 'Delta'])
+  assert.equal(r[0].postedDaysAgo, 1)
+})
+
+test('jobs: data role + location filter', () => {
+  const r = searchJobs(rows, { role: 'data', location: 'new york', now: NOW })
+  assert.deepEqual(r.map((x) => x.company), ['Beta'])
+  assert.deepEqual(searchJobs(rows, { role: 'data', location: 'remote', now: NOW }).map((x) => x.company), ['Gamma'])
+})
+
+test('jobs: keyword, any role, count clamp', () => {
+  assert.deepEqual(searchJobs(rows, { role: '', keyword: 'frontend', now: NOW }).map((x) => x.company), ['Delta'])
+  assert.equal(searchJobs(rows, { role: '', count: 2, now: NOW }).length, 2)
+  assert.equal(searchJobs(rows, { role: '', count: 99, now: NOW }).length, 4)
+})
+
+test('policy: job search is allowed without --writes', () => {
+  assert.equal(decideTool('mcp__jobs__find_jobs'), true)
+})

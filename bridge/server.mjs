@@ -26,6 +26,7 @@ import { uiServer } from './ui.mjs'
 import { chromeAvailable, chromeServer } from './chrome.mjs'
 import { visionServer } from './vision.mjs'
 import { agentConfig, agentConfigured, agentPrompt, agentServer } from './agent.mjs'
+import { jobsEnabled, jobsServer } from './jobs.mjs'
 import { homedir, tmpdir } from 'node:os'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
@@ -1357,6 +1358,8 @@ wss.on('connection', (socket) => {
         // The user's own agent (OpenClaw or any OpenAI-compatible one), when
         // JARVIS_AGENT_URL and JARVIS_AGENT_TOKEN are set. See bridge/agent.mjs.
         ...(agentConfigured() ? { agent: agentServer() } : {}),
+        // SimplifyJobs internship / new-grad search, when JARVIS_JOBS=1.
+        ...(jobsEnabled() ? { jobs: jobsServer() } : {}),
       },
       // A plain system prompt, not the claude_code preset. The preset is
       // tuned for a coding agent — verbose, file-oriented, and a large chunk

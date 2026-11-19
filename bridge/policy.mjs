@@ -162,6 +162,8 @@ export function decideTool(name, allowWrites = false) {
     // The user's own agent (bridge/agent.mjs). It runs its own permission
     // checks; asking it is a conversation, not an action to vet by name.
     if (server === 'agent') return true
+    // Job search (bridge/jobs.mjs): a read-only lookup.
+    if (server === 'jobs') return true
 
     const tool = mcpToolOf(name)
     // Headless Playwright (the EC2 deployment's browser): looking around is a

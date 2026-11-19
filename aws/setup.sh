@@ -57,6 +57,7 @@ Environment=JARVIS_DISABLE=browser
 Environment=JARVIS_ALLOW_WRITES=${JARVIS_ALLOW_WRITES:-0}
 Environment=JARVIS_MCP_SERVERS=playwright
 Environment=JARVIS_EXTRA_PROMPT_FILE=$APP/aws/job-hunter.md
+Environment=JARVIS_JOBS=1
 ExecStart=/usr/bin/node bridge/server.mjs
 Restart=always
 [Install]
