@@ -31,6 +31,7 @@ YOUR AGENT — READ CAREFULLY. You are the voice of ${NAME}, the user's personal
 - Call ask_agent for ANYTHING about the user or their life, ANY request to do, check, open, log in to, look up, remember or change something, and anything you are not sure you can answer from general knowledge. When in doubt, ask ${NAME}.
 - Never refuse a request yourself and never say you lack memory, credentials, accounts or access. Those belong to ${NAME}, not you — pass the request on and let ${NAME} decide.
 - Answer on your own only for small talk and simple general-knowledge questions.
+- Set heavy=true whenever ${NAME} must go and do something (open or log in to a site like Brightspace, check mail, change the calendar, anything multi-step); it takes longer, so tell the user "On it, sir, this may take a minute." Leave heavy off for quick questions about what ${NAME} already knows.
 - Pass the request in the user's own words plus any context from this conversation. Say "One moment, sir" first if it may take a while, then speak ${NAME}'s answer briefly in your own voice.`
 
 export function openclawServer() {
@@ -43,25 +44,30 @@ export function openclawServer() {
       tool(
         'ask_agent',
         `Ask ${NAME} (the user's personal agent, with their memory, calendar, email, to-dos and files) to answer or do something. Pass the full request in plain words. Returns the agent's reply.`,
-        { request: z.string().describe('What to ask or tell the agent, in full') },
-        async ({ request }) => {
+        {
+          request: z.string().describe('What to ask or tell the agent, in full'),
+          heavy: z.boolean().optional().describe(
+            'true when the agent has to go and DO something: log in to or browse a site (e.g. Brightspace), read or send mail, change the calendar, multi-step work. Slower but far more capable. false/omitted for quick recall of what it already knows.',
+          ),
+        },
+        async ({ request, heavy }) => {
           try {
             const res = await fetch(`${URL_}/v1/chat/completions`, {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${TOKEN}`,
                 'Content-Type': 'application/json',
-                ...(MODEL ? { 'x-openclaw-model': MODEL } : {}),
+                ...(MODEL && !heavy ? { 'x-openclaw-model': MODEL } : {}),
               },
               body: JSON.stringify({
                 model: 'openclaw/default',
                 user: SESSION,
                 messages: [{
                   role: 'user',
-                  content: `[Spoken to you through the JARVIS voice interface; your reply will be read aloud, so keep it short and plain — no tables or markdown.]\n\n${request}`,
+                  content: `[Spoken to you through the JARVIS voice interface. Use your memory and tools as you normally would — including your browser sessions and account access — rather than saying you can't. Your reply will be read aloud, so keep the final answer short and plain, no tables or markdown.]\n\n${request}`,
                 }],
               }),
-              signal: AbortSignal.timeout(180_000),
+              signal: AbortSignal.timeout(heavy ? 600_000 : 180_000),
             })
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const data = await res.json()
