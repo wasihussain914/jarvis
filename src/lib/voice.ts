@@ -66,6 +66,9 @@ export type Voice = {
   /** Push-to-talk released: send what was said as soon as it is transcribed,
    *  instead of waiting to see if the sentence continues. */
   release?: () => void
+  /** Push-to-talk pressed: start a fresh segment now, even if sound is
+   *  already going (talking a beat early, a noisy room). */
+  press?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -437,9 +440,12 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
   let segmentOk = false
   // Set when push-to-talk is released; cleared once the turn has been sent.
   let releasing = false
+  // Set once the release has closed the segment that was live at the time.
+  // Anything the VAD picks up after that began with the mic muted and is
+  // dropped, so there is nothing further to wait for — even in a loud room.
+  let cutDone = false
   const settle = () => {
-    if (!releasing || draining || pendingAudio.length) return
-    if (vad?.meter().speaking) return // its segment will end and land here again
+    if (!releasing || !cutDone || draining || pendingAudio.length) return
     releasing = false
     assemble.flush()
   }
@@ -616,13 +622,22 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       diag.running = false
     },
     live: () => vad?.live() ?? false,
+    press: () => {
+      segmentOk = false
+      vad?.restart()
+    },
     release: () => {
       releasing = true
+      cutDone = false
       // A beat for the last syllable, then close the segment ourselves: in a
       // noisy room the VAD would otherwise keep recording until it goes quiet.
       setTimeout(() => {
-        vad?.cut()
-        settle()
+        // If a segment was cut, its audio arrives through onEnd → drain →
+        // settle, so the turn is sent once with the tail included. Settling
+        // here would send it twice: once now, once when the tail lands.
+        const cut = vad?.cut() ?? false
+        cutDone = true
+        if (!cut) settle()
       }, 300)
       // Belt and braces: never leave a released turn waiting on a segment
       // that somehow never closes.

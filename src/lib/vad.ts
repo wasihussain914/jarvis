@@ -46,7 +46,10 @@ export type Vad = {
   live: () => boolean
   /** End the segment in progress now (push-to-talk release), so it is sent
    *  without waiting for the room to go quiet. */
-  cut: () => void
+  cut: () => boolean
+  /** Throw away the segment in progress and start listening afresh, so a
+   *  push-to-talk press records from now even mid-sound. */
+  restart: () => void
   /** Live internals, for the diagnostics panel. */
   meter: () => { energy: number; floor: number; threshold: number; speaking: boolean }
 }
@@ -112,12 +115,12 @@ export async function startVad(h: VadHandlers): Promise<Vad> {
         ? 'Microphone access denied — voice input is unavailable.'
         : 'No microphone available.',
     )
-    return { stop: () => {}, setGuard: () => {}, live: () => false, cut: () => {}, meter: () => ({ energy: 0, floor: 0, threshold: 0, speaking: false }) }
+    return { stop: () => {}, setGuard: () => {}, live: () => false, cut: () => false, restart: () => {}, meter: () => ({ energy: 0, floor: 0, threshold: 0, speaking: false }) }
   }
 
   if (typeof MediaRecorder === 'undefined') {
     h.onError('This browser cannot record audio — voice input is unavailable.')
-    return { stop: () => {}, setGuard: () => {}, live: () => false, cut: () => {}, meter: () => ({ energy: 0, floor: 0, threshold: 0, speaking: false }) }
+    return { stop: () => {}, setGuard: () => {}, live: () => false, cut: () => false, restart: () => {}, meter: () => ({ energy: 0, floor: 0, threshold: 0, speaking: false }) }
   }
 
   const mime = pickMime()
@@ -257,7 +260,16 @@ export async function startVad(h: VadHandlers): Promise<Vad> {
 
   return {
     cut: () => {
-      if (speaking) endSegment()
+      // True when a segment was closed: its onEnd is on the way.
+      if (!speaking) return false
+      endSegment()
+      return true
+    },
+    restart: () => {
+      speaking = false
+      speechStartedAt = 0
+      armedAt = 0
+      discardRecorder()
     },
     stop: () => {
       stopped = true

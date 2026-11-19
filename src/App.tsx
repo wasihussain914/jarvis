@@ -683,6 +683,7 @@ export default function App() {
       // over an answer interrupts him, the way talking over him would.
       if (PUSH_TO_TALK) {
         store.getState().setMicMuted(false)
+        voice.current?.press?.()
         // Only a press that starts while he is answering is a barge-in.
         pttInterrupt.current = phase === 'thinking' || phase === 'tooling' || phase === 'speaking'
       }

@@ -1019,6 +1019,8 @@ const handleRequest = async (req, res) => {
             : 'webm'
       const form = new FormData()
       form.append('model_id', 'scribe_v1')
+      // No "(laughter)" / "[music]" tags: they are noise to the agent.
+      form.append('tag_audio_events', 'false')
       form.append(
         'file',
         new Blob([Buffer.concat(chunks)], { type }),
