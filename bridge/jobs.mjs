@@ -23,6 +23,29 @@ const CATEGORIES = {
   hardware: ['hardware', 'hardware engineering'],
 }
 
+/** The lists abbreviate the big hubs ("NYC", "SF"); match either way. */
+const LOCATION_ALIASES = [
+  ['new york', 'nyc'],
+  ['san francisco', 'sf', 'bay area'],
+  ['los angeles', 'la'],
+  ['washington dc', 'washington, dc', 'dc'],
+  ['remote', 'remote in'],
+]
+
+function locationTerms(loc) {
+  const group = LOCATION_ALIASES.find((g) => g.some((a) => loc === a || loc.startsWith(a + ' ') || loc.includes(a) && a.length > 3))
+  return group ? [...new Set([loc, ...group])] : [loc]
+}
+
+function locationMatches(locations, loc) {
+  const terms = locationTerms(loc)
+  return locations.some((l) => {
+    const low = l.toLowerCase()
+    // Short aliases ("sf", "la", "dc") must match a whole token, not a substring of "Dallas".
+    return terms.some((t) => (t.length <= 3 ? low.split(/[^a-z]+/).includes(t) : low.includes(t)))
+  })
+}
+
 export const jobsEnabled = (env = process.env) => env.JARVIS_JOBS === '1'
 
 const CACHE_MS = 30 * 60 * 1000
@@ -47,8 +70,7 @@ export function searchJobs(rows, { role = 'software', location = '', keyword = '
   return rows
     .filter((r) => r.active && r.is_visible !== false)
     .filter((r) => !cats || cats.includes(String(r.category ?? '').toLowerCase()))
-    .filter((r) => !loc || (r.locations ?? []).some((l) => l.toLowerCase().includes(loc)) ||
-      (loc === 'remote' && (r.locations ?? []).length === 0))
+    .filter((r) => !loc || locationMatches(r.locations ?? [], loc))
     .filter((r) => !kw || `${r.title} ${r.company_name}`.toLowerCase().includes(kw))
     .sort((a, b) => (b.date_posted ?? 0) - (a.date_posted ?? 0))
     .slice(0, n)

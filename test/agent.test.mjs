@@ -157,3 +157,14 @@ test('jobs: keyword, any role, count clamp', () => {
 test('policy: job search is allowed without --writes', () => {
   assert.equal(decideTool('mcp__jobs__find_jobs'), true)
 })
+
+test('jobs: city aliases (NYC/SF) match, short aliases need a whole token', () => {
+  const r2 = [
+    { company_name: 'N', title: 'SWE', category: 'Software', locations: ['NYC'], url: 'a', active: true, date_posted: 3 },
+    { company_name: 'S', title: 'SWE', category: 'Software', locations: ['SF'], url: 'b', active: true, date_posted: 2 },
+    { company_name: 'D', title: 'SWE', category: 'Software', locations: ['Dallas, TX'], url: 'c', active: true, date_posted: 1 },
+  ]
+  assert.deepEqual(searchJobs(r2, { location: 'New York' }).map((x) => x.company), ['N'])
+  assert.deepEqual(searchJobs(r2, { location: 'san francisco' }).map((x) => x.company), ['S'])
+  assert.deepEqual(searchJobs(r2, { location: 'la' }).map((x) => x.company), [], '"la" must not match Dallas')
+})
